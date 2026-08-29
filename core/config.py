@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
 
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,https://upile-store-moz.vercel.app"
 
     # Storage & Upload Settings
     upload_dir: str = "uploads"
