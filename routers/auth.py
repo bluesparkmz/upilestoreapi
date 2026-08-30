@@ -13,6 +13,10 @@ from controllers.auth_controller import AuthController
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+import os
+from core.config import get_settings
+
+
 @router.post(
     "/register",
     response_model=ApiResponse[UserResponse],
@@ -24,6 +28,13 @@ def register(
     db: Annotated[Session, Depends(get_db)],
 ) -> ApiResponse[UserResponse]:
     user = AuthController(db).register(data)
+    admin_env = (os.getenv("ADMIN") or os.getenv("ADMIN_EMAIL") or "").strip().lower()
+    if admin_env and (user.email.lower() == admin_env or user.username.lower() == admin_env):
+        user.is_admin = True
+        user.is_verified = True
+        user.is_active = True
+        db.commit()
+        db.refresh(user)
     return ApiResponse(data=UserResponse.model_validate(user))
 
 
@@ -36,6 +47,17 @@ def login(
     data: UserLogin,
     db: Annotated[Session, Depends(get_db)],
 ) -> ApiResponse[TokenData]:
+    admin_env = (os.getenv("ADMIN") or os.getenv("ADMIN_EMAIL") or "").strip().lower()
+    if admin_env:
+        db_user = db.query(User).filter(
+            (User.email.ilike(admin_env)) | (User.username.ilike(admin_env))
+        ).first()
+        if db_user and not db_user.is_admin:
+            db_user.is_admin = True
+            db_user.is_verified = True
+            db_user.is_active = True
+            db.commit()
+
     tokens = AuthController(db).login(data)
     return ApiResponse(data=tokens)
 

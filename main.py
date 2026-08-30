@@ -17,6 +17,9 @@ settings = get_settings()
 os.makedirs(settings.upload_dir, exist_ok=True)
 
 
+from sqlalchemy import text
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Cria todas as tabelas no PostgreSQL/SQLite se ainda não existirem
@@ -25,6 +28,36 @@ async def lifespan(app: FastAPI):
         print("Tabelas da base de dados verificadas/criadas com sucesso.")
     except Exception as e:
         print(f"Aviso ao verificar tabelas: {e}")
+
+    # Atribui permissões de Admin no startup via instrução SQL para o email/username da variável de ambiente ADMIN
+    admin_val = (
+        os.getenv("ADMIN")
+        or os.getenv("ADMIN_EMAIL")
+        or getattr(settings, "admin", None)
+        or getattr(settings, "admin_email", None)
+    )
+    if admin_val:
+        admin_identifier = admin_val.strip()
+        try:
+            with engine.begin() as conn:
+                res = conn.execute(
+                    text(
+                        "UPDATE users SET is_admin = TRUE, is_verified = TRUE, is_active = TRUE "
+                        "WHERE LOWER(email) = LOWER(:val) OR LOWER(username) = LOWER(:val)"
+                    ),
+                    {"val": admin_identifier},
+                )
+                if res.rowcount > 0:
+                    print(
+                        f"SQL Startup: Permissões de Administrador concedidas com sucesso a '{admin_identifier}' ({res.rowcount} conta(s) promovida(s))."
+                    )
+                else:
+                    print(
+                        f"SQL Startup: Utilizador com email/username '{admin_identifier}' ainda não se registou."
+                    )
+        except Exception as exc:
+            print(f"Aviso SQL Startup ao atribuir Admin: {exc}")
+
     yield
 
 

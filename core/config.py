@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 10080  # 7 dias (7 * 24 * 60 minutos)
     refresh_token_expire_days: int = 90  # 90 dias
 
+    admin: str | None = None
+    admin_email: str | None = None
+
     cors_origins: str = "http://localhost:3000,https://upile-store-moz.vercel.app"
 
     # Storage & Upload Settings
