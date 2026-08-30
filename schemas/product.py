@@ -70,13 +70,46 @@ class ProductUpdate(BaseModel):
     category: str | None = Field(default=None, max_length=100)
     type: ProductType | None = None
     artist: str | None = Field(default=None, max_length=255)
-    year: int | None = Field(default=None, ge=1, le=9999)
+    year: int | None = None
     material: str | None = Field(default=None, max_length=255)
     dimensions: str | None = Field(default=None, max_length=255)
     condition: str | None = Field(default=None, max_length=100)
-    price: float | None = Field(default=None, ge=0)
+    price: float | None = Field(default=None)
     currency: str | None = Field(default=None, max_length=10)
-    quantity: int | None = Field(default=None, ge=1)
+    quantity: int | None = None
+
+    @field_validator("year", mode="before")
+    @classmethod
+    def clean_update_year(cls, v: object) -> int | None:
+        if v is None or v == "" or v == "null" or v == "undefined":
+            return None
+        try:
+            val = int(v)
+            return val if 1 <= val <= 9999 else None
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def clean_update_price(cls, v: object) -> float | None:
+        if v is None or v == "" or v == "null" or v == "undefined":
+            return None
+        try:
+            val = float(v)
+            return val if val >= 0 else 0.0
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("quantity", mode="before")
+    @classmethod
+    def clean_update_quantity(cls, v: object) -> int | None:
+        if v is None or v == "" or v == "null" or v == "undefined":
+            return None
+        try:
+            val = int(v)
+            return val if val >= 1 else 1
+        except (ValueError, TypeError):
+            return None
 
 
 class ProductImageCreate(BaseModel):
