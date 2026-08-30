@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ProductType(str, Enum):
@@ -20,15 +20,48 @@ class ProductCreate(BaseModel):
     category: str | None = Field(default=None, max_length=100)
     type: ProductType | None = None
     artist: str | None = Field(default=None, max_length=255)
-    year: int | None = Field(default=None, ge=1, le=9999)
+    year: int | None = None
     material: str | None = Field(default=None, max_length=255)
     dimensions: str | None = Field(default=None, max_length=255)
     condition: str | None = Field(default=None, max_length=100)
     # Preço e publicação opcional no momento da criação da obra
-    price: float | None = Field(default=None, ge=0, description="Preço de venda da obra")
+    price: float | None = Field(default=None, description="Preço de venda da obra")
     currency: str = Field(default="MZN", max_length=10)
-    quantity: int = Field(default=1, ge=1)
+    quantity: int = Field(default=1)
     auto_publish: bool = Field(default=True, description="Publicar anúncio de venda imediatamente")
+
+    @field_validator("year", mode="before")
+    @classmethod
+    def clean_year(cls, v: object) -> int | None:
+        if v is None or v == "" or v == "null" or v == "undefined":
+            return None
+        try:
+            val = int(v)
+            return val if 1 <= val <= 9999 else None
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def clean_price(cls, v: object) -> float | None:
+        if v is None or v == "" or v == "null" or v == "undefined":
+            return None
+        try:
+            val = float(v)
+            return val if val >= 0 else 0.0
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("quantity", mode="before")
+    @classmethod
+    def clean_quantity(cls, v: object) -> int:
+        if v is None or v == "" or v == "null" or v == "undefined":
+            return 1
+        try:
+            val = int(v)
+            return val if val >= 1 else 1
+        except (ValueError, TypeError):
+            return 1
 
 
 class ProductUpdate(BaseModel):

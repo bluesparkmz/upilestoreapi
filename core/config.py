@@ -13,8 +13,15 @@ class Settings(BaseSettings):
 
     app_name: str = "UpileStore"
     environment: str = "development"
-
     database_url: str = "sqlite:///./upilestore.db"
+
+    @property
+    def sync_database_url(self) -> str:
+        """Garante que postgres:// seja convertido para postgresql:// para o SQLAlchemy."""
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
 
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"

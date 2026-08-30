@@ -36,42 +36,49 @@ async def create_product(
     category: Optional[str] = Form(default=None),
     type: Optional[str] = Form(default=None),
     artist: Optional[str] = Form(default=None),
-    year: Optional[int] = Form(default=None),
+    year: Optional[str] = Form(default=None),
     material: Optional[str] = Form(default=None),
     dimensions: Optional[str] = Form(default=None),
     condition: Optional[str] = Form(default=None),
-    price: Optional[float] = Form(default=None),
+    price: Optional[str] = Form(default=None),
     currency: str = Form(default="MZN"),
-    quantity: int = Form(default=1),
-    auto_publish: bool = Form(default=True),
+    quantity: Optional[str] = Form(default="1"),
+    auto_publish: Optional[str] = Form(default="true"),
     # Ficheiro de imagem opcional
     image: Optional[UploadFile] = File(default=None),
 ) -> ApiResponse[ProductResponse]:
     from schemas.product import ProductCreate, ProductType
-    from pydantic import ValidationError
 
     # Mapear type string para enum se fornecido
     product_type = None
-    if type:
+    if type and type.strip():
         try:
-            product_type = ProductType(type.lower())
+            product_type = ProductType(type.strip().lower())
         except ValueError:
             product_type = None
 
+    # Mapear auto_publish
+    is_auto_publish = True
+    if auto_publish is not None:
+        if isinstance(auto_publish, bool):
+            is_auto_publish = auto_publish
+        else:
+            is_auto_publish = str(auto_publish).strip().lower() in ("true", "1", "yes")
+
     data = ProductCreate(
-        title=title,
-        description=description,
-        category=category,
+        title=title.strip(),
+        description=description.strip() if description and description.strip() else None,
+        category=category.strip() if category and category.strip() else None,
         type=product_type,
-        artist=artist,
+        artist=artist.strip() if artist and artist.strip() else None,
         year=year,
-        material=material,
-        dimensions=dimensions,
-        condition=condition,
+        material=material.strip() if material and material.strip() else None,
+        dimensions=dimensions.strip() if dimensions and dimensions.strip() else None,
+        condition=condition.strip() if condition and condition.strip() else None,
         price=price,
-        currency=currency,
-        quantity=quantity,
-        auto_publish=auto_publish,
+        currency=currency or "MZN",
+        quantity=quantity or 1,
+        auto_publish=is_auto_publish,
     )
 
     service = ProductController(db)

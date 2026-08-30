@@ -7,15 +7,26 @@ from core.config import get_settings
 
 settings = get_settings()
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+db_url = settings.sync_database_url
+is_sqlite = db_url.startswith("sqlite")
 
-engine = create_engine(
-    settings.database_url,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-)
+connect_args = {"check_same_thread": False} if is_sqlite else {}
 
-if settings.database_url.startswith("sqlite"):
+engine_kwargs = {
+    "connect_args": connect_args,
+    "pool_pre_ping": True,
+}
+
+if not is_sqlite:
+    engine_kwargs.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 300,
+    })
+
+engine = create_engine(db_url, **engine_kwargs)
+
+if is_sqlite:
 
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record) -> None:
