@@ -123,6 +123,7 @@ class ProductController:
         search: str | None = None,
         category: str | None = None,
         product_type: str | None = None,
+        owner_id: int | None = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
         page: int = 1,
@@ -146,6 +147,9 @@ class ProductController:
 
         if product_type:
             query = query.where(Product.type == product_type)
+
+        if owner_id is not None:
+            query = query.where(Product.owner_id == owner_id)
 
         count_query = select(func.count()).select_from(query.subquery())
         total = self.db.scalar(count_query) or 0
