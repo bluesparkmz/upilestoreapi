@@ -39,45 +39,69 @@ app = FastAPI(
 
 app.mount(f"/{settings.upload_dir}", StaticFiles(directory=settings.upload_dir), name="uploads")
 
+# Origens padrão permitidas para CORS
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://upile-store-moz.vercel.app",
+]
+
+cors_origins = list(set(DEFAULT_CORS_ORIGINS + settings.cors_origins_list))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
+def get_cors_headers(request: Request) -> dict[str, str]:
+    origin = request.headers.get("origin")
+    if origin and ("vercel.app" in origin or "localhost" in origin or "127.0.0.1" in origin):
+        return {"Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true"}
+    return {"Access-Control-Allow-Origin": "*"}
+
+
 @app.exception_handler(AppException)
-async def app_exception_handler(_request: Request, exc: AppException) -> JSONResponse:
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
         content={"success": False, "message": exc.message},
+        headers=get_cors_headers(request),
     )
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     errors = exc.errors()
     message = errors[0]["msg"] if errors else "Dados inválidos"
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"success": False, "message": message},
+        headers=get_cors_headers(request),
     )
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
-    # Captura erros inesperados e devolve resposta amigável em vez de quebrar
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     error_msg = str(exc)
     print(f"Erro interno não tratado: {error_msg}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "success": False,
-            "message": "Ocorreu um erro no servidor. A nossa equipa já está a verificar. Por favor, tente novamente em breve.",
+            "message": "Ocorreu um erro no servidor. Por favor, tente novamente em breve.",
         },
+        headers=get_cors_headers(request),
     )
+
 
 
 @app.get("/", tags=["Health"])
